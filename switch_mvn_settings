@@ -1,0 +1,46 @@
+### These are three separate scripts; will merge them into one later
+#!/usr/bin/env bash
+
+pushd /cygdrive/c/users/tov619/.m2 >/dev/null;
+
+if [[ -e settings-eval.xml ]]; then
+    mv settings.xml settings-work.xml;
+    mv settings-eval.xml settings.xml;
+else
+    echo "Already using eval settings.xml";
+fi
+
+popd >/dev/null;
+
+exit 0;
+#!/usr/bin/env bash
+
+pushd /cygdrive/c/users/tov619/.m2 >/dev/null;
+
+if [[ -e settings-offline.xml ]]; then
+    mv settings.xml settings-work.xml;
+    mv settings-offline.xml settings.xml;
+else
+    echo "Already using offline settings.xml";
+fi
+
+popd >/dev/null;
+
+exit 0;
+#!/usr/bin/env bash
+
+pushd /cygdrive/c/users/tov619/.m2 >/dev/null;
+
+if [ -e settings-work.xml ] && [ -e settings-eval.xml ]; then
+    mv settings.xml settings-offline.xml;
+    mv settings-work.xml settings.xml;
+elif [ -e settings-work.xml ] && [ -e settings-offline.xml ]; then
+    mv settings.xml settings-eval.xml;
+    mv settings-work.xml settings.xml;
+else
+    echo "Already using work settings.xml";
+fi
+
+popd >/dev/null;
+
+exit 0;
