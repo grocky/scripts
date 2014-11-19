@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+usage() {
+    cat << NUPE
+
+    usage: $0 [OPTIONS] [on | off]
+
+    This script helps set your proxy settings for various development tools.
+
+    OPTIONS
+        -u Override your username; Useful when $USER is not your eid
+        -p Set your password
+        -h Print this help message
+NUPE
+}
+
+set_proxy() {
+    echo "exporting proxy"
+    # This doesn't work
+    export http_proxy="$proxy"
+    export https_proxy="$proxy"
+
+    echo "setting git proxy"
+    git config --global http.proxy $proxy
+    git config --global https.proxy $proxy
+
+    echo "setting npm proxy"
+    npm config set proxy $proxy
+    npm config set https-proxy $proxy
+
+    echo "setting bower proxy"
+    sed -i 's|"proxy": ""|"proxy": "'"$proxy"'"|g' $home/.bowerrc
+    sed -i 's|"https-proxy": ""|"https-proxy": "'"$proxy"'"|g' $home/.bowerrc
+    # When we just want to update the password
+    sed -i 's|'$USERNAME':'$OLD_PASSWORD'|'$USERNAME':'$PASSWORD'|g' $home/.bowerrc
+
+    echo "setting Package Control proxy"
+    sed -i.bak 's|"http_proxy": ""|"http_proxy": "'"$proxy"'"|g' "$home/AppData/Roaming/Sublime Text 3/Packages/User/Package Control.sublime-settings"
+    sed -i.bak 's|"https_proxy": ""|"https_proxy": "'"$proxy"'"|g' "$home/AppData/Roaming/Sublime Text 3/Packages/User/Package Control.sublime-settings"
+    # When we just want to update the password
+    sed -i 's|'$USERNAME':'$OLD_PASSWORD'|'$USERNAME':'$PASSWORD'|g' "$home/AppData/Roaming/Sublime Text 3/Packages/User/Package Control.sublime-settings"
+}
+
+clear_proxy() {
+    echo "resetting proxy"
+    export http_proxy=
+    export https_proxy=
+
+    echo "resetting git proxy..."
+    git config --global --unset http.proxy > /dev/null 2>&1
+    git config --global --unset https.proxy > /dev/null 2>&1
+
+    echo "resetting npm proxy..."
+    npm config rm proxy > /dev/null 2>&1
+    npm config rm https-proxy > /dev/null 2>&1
+
+    echo "resetting bower proxy..."
+    sed -i.bak 's|"proxy": ".*"|"proxy": ""|g' $home/.bowerrc
+    sed -i.bak 's|"https-proxy": ".*"|"https-proxy": ""|g' $home/.bowerrc
+
+    echo "resetting Package Control proxy..."
+    sed -i.bak 's|"http_proxy": ".*"|"http_proxy": ""|g' "$home/AppData/Roaming/Sublime Text 3/Packages/User/Package Control.sublime-settings"
+    sed -i.bak 's|"https_proxy": ".*"|"https_proxy": ""|g' "$home/AppData/Roaming/Sublime Text 3/Packages/User/Package Control.sublime-settings"
+}
+
+store_password() {
+    echo $PASSWORD > $PASSWORD_FILE
+}
+
+password_prompt() {
+    read -sp "Proxy password: " PASSWORD
+    store_password;
+}
+#### Main ####
+
+# Get the location of this script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PASSWORD_FILE="$DIR/.proxy_password"
+
+# Get the password from the system
+if [ -f $PASSWORD_FILE ]; then
+    PASSWORD=$(cat $PASSWORD_FILE);
+    OLD_PASSWORD=$PASSWORD
+else
+    password_prompt;
+fi
+
+USERNAME=$USER;
+
+while getopts :hpu: opt
+do
+    case $opt in
+        p)
+            PASSWORD=$OPTARG
+            password_prompt;
+            ;;
+        u)
+            USERNAME=$OPTARG
+            ;;
+        h)
+            usage
+            exit
+            ;;
+        \?)
+            echo "invalid option: -$OPTARG" >&2
+            usage
+            exit
+            ;;
+         :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            exit
+            ;;
+    esac
+done
+
+proxy="http://$USERNAME:$PASSWORD@proxy.url.com";
+
+shopt -u nocasematch;
+case ${@:$OPTIND:1} in
+    on | "")
+        set_proxy
+        ;;
+    off)
+        clear_proxy
+        ;;
+esac
+
+exit $?;
